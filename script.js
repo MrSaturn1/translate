@@ -1,67 +1,20 @@
-/*document.addEventListener('DOMContentLoaded', function() {
-    var input = document.getElementById('chat-input');
-    var sendButton = document.getElementById('send-btn');
-
-    function sendMessage() {
-        var message = input.value.trim();
-        input.value = '';
-
-        if (message !== '') {
-            displayMessage(message, 'user');
-            setTimeout(function() {
-                sendForTranslation(message);
-            }, 1000);
-        }
-    }
-
-    sendButton.addEventListener('click', sendMessage);
-
-    input.addEventListener('keypress', function(event) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            sendMessage();
-        }
-    });
-});
-
-// Add a button for speech recognition in your HTML
-// <button id="record-btn">Record</button>
-
-document.getElementById('record-btn').addEventListener('click', function() {
-    var button = this;
-    var recognition = new webkitSpeechRecognition();
-    recognition.lang = "en-US";
-
-    recognition.onstart = function() {
-        button.classList.add('recording'); // Start recording: change to green
-        button.textContent = 'Recording...'; // Optional: change text
-    };
-
-    recognition.onend = function() {
-        button.classList.remove('recording'); // Stop recording: back to red
-        button.textContent = 'Record'; // Optional: reset text
-    };
-
-    recognition.onresult = function(event) {
-        var text = event.results[0][0].transcript;
-        document.getElementById('chat-input').value = text;
-        recognition.stop(); // Stop recognition
-    }
-
-    recognition.onerror = function(event) {
-        console.error("Speech recognition error", event.error);
-        recognition.stop(); // Stop recognition on error
-    }
-
-    recognition.start();
-});*/
-
 document.addEventListener('DOMContentLoaded', function() {
     var input = document.getElementById('chat-input');
     var sendButton = document.getElementById('send-btn');
     var recordButton = document.getElementById('record-btn'); // Get the record button
+    var speakButton = document.getElementById('speak-btn'); // Get the speak butto
     var recognition = new webkitSpeechRecognition();
     recognition.lang = "en-US";
+
+    // Function to handle the speech synthesis
+    speakButton.addEventListener('click', function() {
+        var textToRead = document.getElementById('output').textContent;
+        if (textToRead) {
+            var utterance = new SpeechSynthesisUtterance(textToRead);
+            utterance.lang = 'fr-FR'; // Set to French
+            window.speechSynthesis.speak(utterance);
+        }
+    });
 
     function toggleRecording() {
         if (recordButton.classList.contains('recording')) {
@@ -126,6 +79,13 @@ function displayMessage(message, sender) {
     messageDiv.textContent = message;
     if (sender === 'bot') {
         messageDiv.style.backgroundColor = '#d1e8ff';
+
+        // Add click event listener for reading the message aloud
+        messageDiv.addEventListener('click', function() {
+            var utterance = new SpeechSynthesisUtterance(this.textContent);
+            utterance.lang = 'fr-FR'; // Set to the language of the translation
+            window.speechSynthesis.speak(utterance);
+        });
     }
     output.appendChild(messageDiv);
     output.scrollTop = output.scrollHeight;
