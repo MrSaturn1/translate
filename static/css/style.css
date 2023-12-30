@@ -24,20 +24,6 @@
     width: 50px;
 }
 
-#speak-btn {
-    padding: 8px 15px;
-    background-color: #4CAF50; /* Green background */
-    color: white; /* White text */
-    border: none;
-    border-radius: 4px; /* Rounded corners */
-    cursor: pointer; /* Pointer cursor on hover */
-    font-size: 16px; /* Font size */
-}
-
-#speak-btn:hover {
-    background-color: #45a049; /* Darker shade of green on hover */
-}
-
 .record-btn {
     width: 50px;
     height: 50px;
@@ -53,6 +39,17 @@
     background-color: red; /* Color when recording */
 }
 
+.message.bot-message {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.message.bot-message::after {
+    content: '🔉'; /* Speaker emoji as an icon; you can replace it with an icon from a library like Font Awesome */
+    margin-left: 10px;
+    font-size: 1em;
+}
 
 .message {
     margin: 5px;

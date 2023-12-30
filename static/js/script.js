@@ -5,13 +5,20 @@ document.addEventListener('DOMContentLoaded', function() {
     var speakButton = document.getElementById('speak-btn');
     var recognition = new webkitSpeechRecognition();
     recognition.lang = "en-US";
-    recognition.continuous = true;
+    //recognition.continuous = true;
     recognition.interimResults = true;
 
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     var isRecording = false;
     var completeTranscript = ''; // To keep track of the entire transcript
 
     recognition.start();
+
+    if (isMobile) {
+        recognition.continuous = false
+    } else {
+        recognition.continuous = true
+    }
 
     // Event listener for mouse down or touch start
     recordButton.addEventListener('mousedown', function() {
@@ -35,6 +42,11 @@ document.addEventListener('DOMContentLoaded', function() {
             isRecording = false;
             recordButton.classList.remove('recording');
             recordButton.textContent = 'Record';
+            // Automatically send the transcript after the timeout
+            // Call sendMessage only if there is a transcript to send
+            if (completeTranscript.trim() !== '') {
+               sendMessage(completeTranscript.trim());
+            }
         }, 1000); // Adjust this delay as needed
         
     });
@@ -44,22 +56,20 @@ document.addEventListener('DOMContentLoaded', function() {
             isRecording = false;
             recordButton.classList.remove('recording');
             recordButton.textContent = 'Record';
+            // Automatically send the transcript after the timeout
+            // Call sendMessage only if there is a transcript to send
+            if (completeTranscript.trim() !== '') {
+                sendMessage(completeTranscript.trim());
+            }
         }, 1000); // Adjust this delay as needed
     });
 
     recognition.onresult = function(event) {
-        if (isRecording) {
-            var current = event.resultIndex;
-            var transcript = event.results[current][0].transcript;
+        var current = event.resultIndex;
+        var transcript = event.results[current][0].transcript;
 
-            if (event.results[current].isFinal) {
-                completeTranscript += transcript + ' '; // Add final transcript to complete transcript
-                input.value = completeTranscript; // Update input with complete transcript
-            } else {
-                // Calculate the new part of the interim result
-                var newInterimPart = transcript.substring(completeTranscript.length);
-                input.value = completeTranscript + newInterimPart; // Update input with new interim part
-            }
+        if (event.results[current].isFinal) {
+            completeTranscript += transcript + ' '; // Append final transcript
         }
     };
 
@@ -67,20 +77,27 @@ document.addEventListener('DOMContentLoaded', function() {
     recognition.onerror = function(event) {
         console.error("Speech recognition error", event.error);
     };
+/*
+    function sendMessage(message) {
+        displayMessage(message, 'user');
+        sendForTranslation(message);
+        input.value = ''; // Clear the input field after sending
+    }
+*/
 
-    function sendMessage() {
-        var message = input.value.trim();
-        input.value = '';
+    function sendMessage(message) {
+        var finalMessage = message || input.value.trim(); // Use provided message or input field value
 
-        if (message !== '') {
-            displayMessage(message, 'user');
-            setTimeout(function() {
-                sendForTranslation(message);
-            }, 1000);
+        if (finalMessage !== '') {
+            displayMessage(finalMessage, 'user');
+            sendForTranslation(finalMessage);
+            input.value = ''; // Clear the input field after sending
         }
     }
 
-    sendButton.addEventListener('click', sendMessage);
+    sendButton.addEventListener('click', function() {
+        sendMessage();
+    });
 
     input.addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
@@ -92,17 +109,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // ... rest of your functions (displayMessage, sendForTranslation, etc.)
 });
 
-function displayMessage(message, sender) {
+/*function displayMessage(message, sender) {
     var output = document.getElementById('output');
     var messageDiv = document.createElement('div');
     messageDiv.classList.add('message');
     messageDiv.textContent = message;
     if (sender === 'bot') {
         messageDiv.style.backgroundColor = '#d1e8ff';
+        if (!window.speechSynthesis) {
+            console.error("Speech Synthesis API is not supported in this browser.");
+            return;
+        }
 
         // Automatically read aloud the message
         var utterance = new SpeechSynthesisUtterance(message);
         utterance.lang = 'fr-FR'; // Set to the language of the translation
+
+        utterance.onerror = function(event) {
+            console.error("Speech Synthesis error:", event.error);
+        };
+
         window.speechSynthesis.speak(utterance)
 
         // Add click event listener for reading the message aloud
@@ -110,6 +136,39 @@ function displayMessage(message, sender) {
             var utterance = new SpeechSynthesisUtterance(this.textContent);
             utterance.lang = 'fr-FR'; // Set to the language of the translation
             window.speechSynthesis.speak(utterance);
+        });
+    }
+    output.appendChild(messageDiv);
+    output.scrollTop = output.scrollHeight;
+}*/
+
+function displayMessage(message, sender) {
+    var output = document.getElementById('output');
+    var messageDiv = document.createElement('div');
+    messageDiv.classList.add('message');
+    messageDiv.textContent = message;
+
+    if (sender === 'bot') {
+        messageDiv.classList.add('bot-message'); // Add 'bot' class for styling
+        messageDiv.style.backgroundColor = '#d1e8ff';
+
+        var readMessageAloud = function(msg) {
+            if (!window.speechSynthesis) {
+                console.error("Speech Synthesis API is not supported in this browser.");
+                return;
+            }
+            var utterance = new SpeechSynthesisUtterance(msg);
+            utterance.lang = 'fr-FR';
+            utterance.onerror = function(event) {
+                console.error("Speech Synthesis error:", event.error);
+            };
+            window.speechSynthesis.speak(utterance);
+        };
+
+        // Automatically read aloud the message and set up click event for reading aloud
+        readMessageAloud(message);
+        messageDiv.addEventListener('click', function() {
+            readMessageAloud(this.textContent);
         });
     }
     output.appendChild(messageDiv);
