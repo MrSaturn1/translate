@@ -3,11 +3,7 @@ from translate import translate_to_french # Replace with your module and functio
 import os
 from flask_cors import CORS, cross_origin
 
-
-open_api_key = os.environ.get('OPENAI_API_KEY')
-#handle a POST request
 app = Flask(__name__)
-app.config['DEBUG'] = True
 CORS(app)
 
 @app.errorhandler(Exception)
@@ -22,10 +18,7 @@ def translate_text():
         english_text = data.get('text')
     else:
         english_text = request.args.get('text')
-
-    print("English text: ", english_text)
-    french_text = translate_to_french(english_text, open_api_key)
-    print("French text: ", french_text)
+    french_text = translate_to_french(english_text)
 
     return jsonify({'translatedText': french_text})
 

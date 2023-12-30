@@ -1,12 +1,10 @@
 from openai import OpenAI
 import os
 
-#need to import api key
-open_api_key = os.environ.get('OPENAI_API_KEY')
+#automatically imports OpenAI API key from environment variable OPEN_API_KEY
 client = OpenAI()
 
-def translate_to_french(text, api_key):
-
+def translate_to_french(text):
     try:
         response = client.chat.completions.create(model="gpt-3.5-turbo",
         messages= [
@@ -21,10 +19,5 @@ def translate_to_french(text, api_key):
     except Exception as e:
         print("An error occurred:", e)
         return None
-
-# Usage
-english_text = "Napoleon lost."
-french_translation = translate_to_french(english_text, open_api_key)
-print("French Translation:", french_translation)
 
  

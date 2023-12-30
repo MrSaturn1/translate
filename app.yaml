@@ -1,13 +1,6 @@
 runtime: python39  # or the Python version you are using
 entrypoint: gunicorn -b :$PORT --log-level debug backend:app  # Replace 'main' with the name of your Python file containing the Flask app
 
-#automatic_scaling:
- # min_idle_instances: 1  # Minimum number of idle instances
-  #max_idle_instances: 2  # Maximum number of idle instances
-  #min_pending_latency: 30ms  # Minimum amount of time that a request should wait in the pending queue
-  #max_pending_latency: 50ms  # Maximum amount of time that a request should wait in the pending queue
-
-
 handlers:
 - url: /css
   static_dir: static/css
@@ -18,6 +11,10 @@ handlers:
   upload: static/index.html
 - url: /.*
   script: auto
+
+# secrets.yaml is not included, you need to add it yourself, including:
+# env_variables:
+#  OPENAI_API_KEY: "your key here"
 
 includes:
 - secrets.yaml
