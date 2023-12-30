@@ -92,7 +92,8 @@ function displayMessage(message, sender) {
 }
 
 function sendForTranslation(text) {
-    var url = new URL('http://127.0.0.1:5000/translate');
+    //var url = new URL('http://127.0.0.1:5000/translate');
+    var url = new URL('https://able-rune-409522.wl.r.appspot.com/translate');
     var params = { text: text };
     url.search = new URLSearchParams(params).toString();
 

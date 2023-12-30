@@ -7,8 +7,12 @@ from flask_cors import CORS, cross_origin
 open_api_key = os.environ.get('OPENAI_API_KEY')
 #handle a POST request
 app = Flask(__name__)
+app.config['DEBUG'] = True
 CORS(app)
 
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    return jsonify({'error': 'An unexpected error occurred'}), 500
 
 @app.route('/translate', methods=['GET', 'POST'])
 @cross_origin()
@@ -25,7 +29,7 @@ def translate_text():
 
     return jsonify({'translatedText': french_text})
 
-@app.route("/")
+@app.route("/test")
 def index():
     return "Congratulations, it's a web app!"
 
