@@ -1,52 +1,72 @@
 document.addEventListener('DOMContentLoaded', function() {
     var input = document.getElementById('chat-input');
     var sendButton = document.getElementById('send-btn');
-    var recordButton = document.getElementById('record-btn'); // Get the record button
-    var speakButton = document.getElementById('speak-btn'); // Get the speak butto
+    var recordButton = document.getElementById('record-btn');
+    var speakButton = document.getElementById('speak-btn');
     var recognition = new webkitSpeechRecognition();
     recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
-    // Function to handle the speech synthesis
-    speakButton.addEventListener('click', function() {
-        var textToRead = document.getElementById('output').textContent;
-        if (textToRead) {
-            var utterance = new SpeechSynthesisUtterance(textToRead);
-            utterance.lang = 'fr-FR'; // Set to French
-            window.speechSynthesis.speak(utterance);
-        }
-    });
+    var isRecording = false;
+    var completeTranscript = ''; // To keep track of the entire transcript
 
-    function toggleRecording() {
-        if (recordButton.classList.contains('recording')) {
-            recognition.stop();
-        } else {
-            recognition.start();
-        }
-    }
+    recognition.start();
 
-    recognition.onstart = function() {
+    // Event listener for mouse down or touch start
+    recordButton.addEventListener('mousedown', function() {
+        isRecording = true;
         recordButton.classList.add('recording');
         recordButton.textContent = 'Recording...';
-    };
+        completeTranscript = ''; // Reset the complete transcript for a new recording session
+    });
+    recordButton.addEventListener('touchstart', function(e) {
+        isRecording = true;
+        e.preventDefault();
+        recordButton.classList.add('recording');
+        recordButton.textContent = 'Recording...';
+        completeTranscript = ''; // Reset the complete transcript for a new recording session
+    });
 
-    recognition.onend = function() {
-        recordButton.classList.remove('recording');
-        recordButton.textContent = 'Record';
-    };
+    // Event listener for mouse up or touch end
+    recordButton.addEventListener('mouseup', function() {
+        // Delay stopping the recording to capture the end of the speech
+        setTimeout(function() {
+            isRecording = false;
+            recordButton.classList.remove('recording');
+            recordButton.textContent = 'Record';
+        }, 1000); // Adjust this delay as needed
+        
+    });
+    recordButton.addEventListener('touchend', function() {
+        // Delay stopping the recording to capture the end of the speech
+        setTimeout(function() {
+            isRecording = false;
+            recordButton.classList.remove('recording');
+            recordButton.textContent = 'Record';
+        }, 1000); // Adjust this delay as needed
+    });
 
     recognition.onresult = function(event) {
-        var text = event.results[0][0].transcript;
-        input.value = text;
-        recognition.stop();
+        if (isRecording) {
+            var current = event.resultIndex;
+            var transcript = event.results[current][0].transcript;
+
+            if (event.results[current].isFinal) {
+                completeTranscript += transcript + ' '; // Add final transcript to complete transcript
+                input.value = completeTranscript; // Update input with complete transcript
+            } else {
+                // Calculate the new part of the interim result
+                var newInterimPart = transcript.substring(completeTranscript.length);
+                input.value = completeTranscript + newInterimPart; // Update input with new interim part
+            }
+        }
     };
+
 
     recognition.onerror = function(event) {
         console.error("Speech recognition error", event.error);
-        recordButton.classList.remove('recording');
-        recordButton.textContent = 'Record';
     };
-
-    recordButton.addEventListener('click', toggleRecording);
 
     function sendMessage() {
         var message = input.value.trim();
@@ -79,6 +99,11 @@ function displayMessage(message, sender) {
     messageDiv.textContent = message;
     if (sender === 'bot') {
         messageDiv.style.backgroundColor = '#d1e8ff';
+
+        // Automatically read aloud the message
+        var utterance = new SpeechSynthesisUtterance(message);
+        utterance.lang = 'fr-FR'; // Set to the language of the translation
+        window.speechSynthesis.speak(utterance)
 
         // Add click event listener for reading the message aloud
         messageDiv.addEventListener('click', function() {
