@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function startRecording() {
         console.log("Start Recording")
         if (persistentStream) {
-            mediaRecorder = new MediaRecorder(persistentStream);
+            mediaRecorder = new MediaRecorder(persistentStream, { mimeType: supportedMimeType });
             audioChunks = [];
 
             mediaRecorder.ondataavailable = event => {
@@ -124,6 +124,60 @@ document.addEventListener('DOMContentLoaded', function() {
     // ... rest of your functions (displayMessage, sendForTranslation, etc.) ...
 });
 
+function speak(msg) {
+
+    const status = document.getElementById('status');
+    status.innerText = "Speak Pressed: ";
+
+    const text = msg;
+    const voiceId = "21m00Tcm4TlvDq8ikWAM";
+    const apiKey = '8cbd3d98d91d921ec8a13735e7189f3b';
+
+    status.innerText += "\n"+text;
+
+    const headers = new Headers();
+    headers.append('Accept', 'audio/mpeg');
+    headers.append('xi-api-key', apiKey);
+    headers.append('Content-Type', 'application/json');
+
+    const body = JSON.stringify({
+        text: text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.5
+        }
+    });
+
+    document.getElementById('status').innerText += '\nProcessing...';
+
+    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
+        method: 'POST',
+        headers: headers,
+        body: body
+    })
+    .then(response => {
+        if (response.ok) {
+            status.innerText += '\nSpeech successfully generated!';
+            return response.blob();
+        } else {
+            throw new Error('Error: ' + response.statusText);
+        }
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.play();
+        audio.onended = () => {
+            status.innerText += '\nAudio has finished playing!';
+        };
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        status.innerText += '\nError: ' + error.message;
+    });
+}
+
 function displayMessage(message, sender) {
     var output = document.getElementById('output');
     var messageDiv = document.createElement('div');
@@ -134,6 +188,21 @@ function displayMessage(message, sender) {
         messageDiv.classList.add('bot-message');
         messageDiv.style.backgroundColor = '#d1e8ff';
 
+        /* // Function to handle speech synthesis using Eleven Labs
+        var speakMessageWithElevenLabs = function(msg) {
+            speak(msg).catch(error => {
+                console.error("Error using Eleven Labs Text-to-Speech:", error);
+            });
+        };*/
+
+        // Automatically read aloud the message when it's from the bot
+        speak(message);
+
+        // Additionally, allow the message to be read aloud when clicked
+        messageDiv.addEventListener('click', function() {
+            speak(this.textContent);
+        });
+        /*
         // Function to handle speech synthesis
         var speakMessage = function(msg) {
             if (!window.speechSynthesis) {
@@ -151,7 +220,7 @@ function displayMessage(message, sender) {
         // Additionally, allow the message to be read aloud when clicked
         messageDiv.addEventListener('click', function() {
             speakMessage(this.textContent);
-        });
+        });*/
     }
 
     output.appendChild(messageDiv);
