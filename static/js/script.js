@@ -1,4 +1,5 @@
 let persistentStream;
+var preferredMimeType;
 
 document.addEventListener('DOMContentLoaded', function() {
     navigator.mediaDevices.getUserMedia({ audio: true })
@@ -25,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var supportedMimeType = getSupportedMimeType();
     console.log("supportedMimeType: ", supportedMimeType);
-    var preferredMimeType;
 
     function startRecording() {
         console.log("Start Recording")
@@ -46,6 +46,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 console.log("preferredMimeType: ", preferredMimeType);
                 const audioBlob = new Blob(audioChunks, { type: preferredMimeType });
+                const audioUrl = URL.createObjectURL(audioBlob); // Define audioUrl here
+
+                const recordingAudio = new Audio(audioUrl);
+                //console.log('Playing back initial recorded audio');
+                //recordingAudio.play().catch(e => console.error('Error playing audio:', e));
+
                 sendAudioToServer(audioBlob);
                 audioChunks = [];
             };
@@ -73,19 +79,26 @@ document.addEventListener('DOMContentLoaded', function() {
     recordButton.addEventListener('touchend', stopRecording);
 
     async function sendAudioToServer(audioBlob) {
+        console.log('Audio Blob:', audioBlob.size, audioBlob.type);
         const formData = new FormData();
-        formData.append('file', audioBlob);
+        formData.append('audioBlob', audioBlob, preferredMimeType);
 
         try {
-            const response = await fetch('https://api.deepgram.com/v1/listen', {
+            const response = await fetch('/sendAudioToServer', {
                 method: 'POST',
-                headers: {
-                    'Authorization': 'Token 57974d38cf50497baf7a595f22492df13f615d0e'
-                },
+                //headers: {
+                    //'Content-Type': 'application/json'
+                    //'Authorization': 'Token 57974d38cf50497baf7a595f22492df13f615d0e'
+                    //'Authorization': 'Token ' + process.env.DEEPGRAM_API_KEY
+                //},
                 body: formData
             });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+            }
             const data = await response.json();
-            console.log(data);
+            console.log('Transcription: ', data);
 
             if (data.results && data.results.channels[0].alternatives[0].transcript) {
                 const transcript = data.results.channels[0].alternatives[0].transcript;
@@ -124,59 +137,46 @@ document.addEventListener('DOMContentLoaded', function() {
     // ... rest of your functions (displayMessage, sendForTranslation, etc.) ...
 });
 
-function speak(msg) {
+const rVoiceId = "21m00Tcm4TlvDq8ikWAM";
 
-    const status = document.getElementById('status');
-    status.innerText = "Speak Pressed: ";
-
-    const text = msg;
-    const voiceId = "21m00Tcm4TlvDq8ikWAM";
-    const apiKey = '8cbd3d98d91d921ec8a13735e7189f3b';
-
-    status.innerText += "\n"+text;
-
-    const headers = new Headers();
-    headers.append('Accept', 'audio/mpeg');
-    headers.append('xi-api-key', apiKey);
-    headers.append('Content-Type', 'application/json');
-
-    const body = JSON.stringify({
-        text: text,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5
-        }
-    });
-
-    document.getElementById('status').innerText += '\nProcessing...';
-
-    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
+function speak(text, voiceId, mimeType) {
+    fetch('/speak', {
         method: 'POST',
-        headers: headers,
-        body: body
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text, voiceId, mimeType })
     })
     .then(response => {
         if (response.ok) {
-            status.innerText += '\nSpeech successfully generated!';
             return response.blob();
         } else {
-            throw new Error('Error: ' + response.statusText);
+            throw new Error('Network response was not ok');
         }
     })
     .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.play();
-        audio.onended = () => {
-            status.innerText += '\nAudio has finished playing!';
-        };
+        console.log('Received audio blob for translated text:', blob);
+
+        if (blob.size > 1024) {  // Example size check, adjust as needed
+            const url = window.URL.createObjectURL(blob);
+            const playbackAudio = new Audio(url);
+            console.log('Playing back audio from /speak endpoint');
+            playbackAudio.play().catch(e => console.error('Error playing audio from /speak:', e));
+        } else {
+            console.error('Error: Received audio blob is too small');
+        }
+
+        //const url = window.URL.createObjectURL(blob);
+        //const playbackAudio = new Audio(url);
+        //console.log('Playing back audio from /speak endpoint');
+        //playbackAudio.play().catch(e => console.error('Error playing audio from /speak:', e));
     })
     .catch(error => {
         console.error('Error:', error);
-        status.innerText += '\nError: ' + error.message;
+        // Error handling
     });
 }
+
 
 function displayMessage(message, sender) {
     var output = document.getElementById('output');
@@ -188,39 +188,13 @@ function displayMessage(message, sender) {
         messageDiv.classList.add('bot-message');
         messageDiv.style.backgroundColor = '#d1e8ff';
 
-        /* // Function to handle speech synthesis using Eleven Labs
-        var speakMessageWithElevenLabs = function(msg) {
-            speak(msg).catch(error => {
-                console.error("Error using Eleven Labs Text-to-Speech:", error);
-            });
-        };*/
-
         // Automatically read aloud the message when it's from the bot
-        speak(message);
+        speak(message, rVoiceId, preferredMimeType);
 
         // Additionally, allow the message to be read aloud when clicked
         messageDiv.addEventListener('click', function() {
-            speak(this.textContent);
+            speak(this.textContent, rVoiceId, preferredMimeType);
         });
-        /*
-        // Function to handle speech synthesis
-        var speakMessage = function(msg) {
-            if (!window.speechSynthesis) {
-                console.error("Speech Synthesis API is not supported in this browser.");
-                return;
-            }
-            var utterance = new SpeechSynthesisUtterance(msg);
-            utterance.lang = 'fr-FR';
-            window.speechSynthesis.speak(utterance);
-        };
-
-        // Automatically read aloud the message when it's from the bot
-        speakMessage(message);
-
-        // Additionally, allow the message to be read aloud when clicked
-        messageDiv.addEventListener('click', function() {
-            speakMessage(this.textContent);
-        });*/
     }
 
     output.appendChild(messageDiv);
