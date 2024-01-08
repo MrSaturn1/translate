@@ -9,8 +9,13 @@ const ffmpeg = require('fluent-ffmpeg');
 const OpenAI = require('openai');
 
 // Set FFmpeg paths
-ffmpeg.setFfmpegPath('/opt/homebrew/bin/ffmpeg');   // Replace with the actual FFmpeg path
-ffmpeg.setFfprobePath('/opt/homebrew/bin/ffprobe');
+const ffmpegStatic = require('ffmpeg-static');
+ffmpeg.setFfmpegPath(ffmpegStatic);
+
+const ffprobeStatic = require('ffprobe-static');
+ffmpeg.setFfprobePath(ffprobeStatic.path);
+//ffmpeg.setFfmpegPath('/opt/homebrew/bin/ffmpeg');   // Replace with the actual FFmpeg path
+//ffmpeg.setFfprobePath('/opt/homebrew/bin/ffprobe');
 
 function convertToMp3(inputPath, outputPath, callback) {
     ffmpeg(inputPath)
@@ -42,6 +47,10 @@ const readFileAsync = promisify(fs.readFile);
 const unlinkAsync = promisify(fs.unlink);  // For file deletion
 
 const PORT = process.env.PORT || 3000;
+
+app.get('/config', (req, res) => {
+  res.json({ appUrl: process.env.APP_URL || 'http://localhost:3000' });
+});
 
 app.post('/sendAudioToServer', upload.single('audioBlob'), async (req, res) => {
     //const audioBlob = req.file; // Adjust according to your data structure
@@ -77,36 +86,6 @@ app.post('/sendAudioToServer', upload.single('audioBlob'), async (req, res) => {
         res.status(500).send('Server Error');
     }
 });
-
-/*app.get('/chat', async (req, res) => {
-    const text = req.query.text;
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-
-    try {
-        const response = await fetch('https://api.openai.com/v1/engines/gpt-3.5-turbo/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${openaiApiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                prompt: `Translate this to French: ${text}`,
-                max_tokens: 60,
-            }),
-        });
-
-        if (!response.ok) {
-            throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        const translation = data.choices[0].text;
-        res.json({ translatedText: translation });
-    } catch (error) {
-        console.error('Translation Error:', error);
-        res.status(500).send('Server Error');
-    }
-});*/
 
 app.get("/chat", async (req, res) => {
     const text = req.query.text;
@@ -178,14 +157,16 @@ app.post('/speak', async (req, res) => {
             // Only proceed if the blob size is reasonable for an audio file
             if (blob.size > 1024) {  // Example size check, adjust as needed
                 const buffer = Buffer.from(await blob.arrayBuffer());
-                const tempFilePath = path.join(__dirname, 'tempSpeech.mp3');
+                //const tempFilePath = path.join(__dirname, 'tempSpeech.mp3');
+                const tempFilePath = path.join('/tmp', 'tempSpeech.mp3');
                 await writeFileAsync(tempFilePath, buffer);
 
                 // Extract just the format part, ignoring codec details if any
                 const outputFormat = req.body.mimeType.split(';')[0].split('/')[1]; // e.g., 'webm' from 'audio/webm;codecs=opus'
 
                 // Convert the file to the desired format
-                const outputFilePath = path.join(__dirname, `outputSpeech.${outputFormat}`); // Change 'webm' to your desired format
+                //const outputFilePath = path.join(__dirname, `outputSpeech.${outputFormat}`); // Change 'webm' to your desired format
+                const outputFilePath = path.join('/tmp', `outputSpeech.${outputFormat}`);
                 await new Promise((resolve, reject) => {
                     convertFromMp3(tempFilePath, outputFilePath, outputFormat, (err) => { // Change 'webm' to your desired format
                         if (err) reject(err);

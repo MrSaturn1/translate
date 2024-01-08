@@ -1,6 +1,16 @@
 let persistentStream;
 var preferredMimeType;
 
+let appUrl;
+
+fetch('/config')
+  .then(response => response.json())
+  .then(config => {
+    appUrl = config.appUrl;
+  });
+
+console.log("appUrl: ", appUrl)
+
 document.addEventListener('DOMContentLoaded', function() {
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
@@ -84,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('audioBlob', audioBlob, preferredMimeType);
 
         try {
-            const response = await fetch('http://localhost:3000/sendAudioToServer', {
+            const response = await fetch(`${appUrl}/sendAudioToServer`, {
                 method: 'POST',
                 //headers: {
                     //'Content-Type': 'application/json'
@@ -142,7 +152,7 @@ const rVoiceId = "21m00Tcm4TlvDq8ikWAM";
 function speak(text, voiceId, mimeType) {
     console.log("Sending to /speak:", { text, voiceId, mimeType });
 
-    fetch('http://localhost:3000/speak', {
+    fetch(`${appUrl}/speak`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -204,7 +214,7 @@ function displayMessage(message, sender) {
 }
 
 function sendForTranslation(text) {
-    var url = new URL('http://localhost:3000/chat');
+    var url = new URL(`${appUrl}/chat`);
     //var url = new URL('https://able-rune-409522.wl.r.appspot.com/translate');
     var params = { text: text };
     url.search = new URLSearchParams(params).toString();
