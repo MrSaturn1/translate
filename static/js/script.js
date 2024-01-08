@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('audioBlob', audioBlob, preferredMimeType);
 
         try {
-            const response = await fetch('/sendAudioToServer', {
+            const response = await fetch('http://localhost:3000/sendAudioToServer', {
                 method: 'POST',
                 //headers: {
                     //'Content-Type': 'application/json'
@@ -140,7 +140,9 @@ document.addEventListener('DOMContentLoaded', function() {
 const rVoiceId = "21m00Tcm4TlvDq8ikWAM";
 
 function speak(text, voiceId, mimeType) {
-    fetch('/speak', {
+    console.log("Sending to /speak:", { text, voiceId, mimeType });
+
+    fetch('http://localhost:3000/speak', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -202,7 +204,7 @@ function displayMessage(message, sender) {
 }
 
 function sendForTranslation(text) {
-    var url = new URL('http://127.0.0.1:5000/translate');
+    var url = new URL('http://localhost:3000/chat');
     //var url = new URL('https://able-rune-409522.wl.r.appspot.com/translate');
     var params = { text: text };
     url.search = new URLSearchParams(params).toString();
@@ -224,7 +226,12 @@ function sendForTranslation(text) {
     })
     .then(data => {
         console.log("Data:", data);
-        displayMessage(data.translatedText, 'bot');
+        if (data.translation) {
+            displayMessage(data.translation, 'bot');
+        } else {
+            console.error('No translation received');
+            displayMessage('No translation received', 'bot');
+        }
     })
     .catch((error) => {
         console.error('Error:', error);

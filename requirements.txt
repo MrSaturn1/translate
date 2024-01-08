@@ -1,5 +1,5 @@
 Flask==2.2.5
 Flask_Cors==4.0.0
-gunicorn==21.2.0
+gunicorn==21.2.0brew
 openai==1.6.1
 SpeechRecognition==3.10.1
