@@ -1,146 +1,194 @@
+let persistentStream;
+var preferredMimeType;
+
+let appUrl;
+
+fetch('/config')
+  .then(response => response.json())
+  .then(config => {
+    appUrl = config.appUrl;
+  });
+
+console.log("appUrl: ", appUrl)
+
 document.addEventListener('DOMContentLoaded', function() {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            persistentStream = stream;
+        })
+        .catch(error => console.error("Error accessing media devices:", error));
     var input = document.getElementById('chat-input');
     var sendButton = document.getElementById('send-btn');
     var recordButton = document.getElementById('record-btn');
-    var speakButton = document.getElementById('speak-btn');
-    var recognition = new webkitSpeechRecognition();
-    recognition.lang = "en-US";
-    //recognition.continuous = true;
-    recognition.interimResults = true;
 
-    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    var isRecording = false;
-    var completeTranscript = ''; // To keep track of the entire transcript
+    var mediaRecorder;
+    var audioChunks = [];
 
-    recognition.start();
-
-    if (isMobile) {
-        recognition.continuous = false
-    } else {
-        recognition.continuous = true
-    }
-
-    // Event listener for mouse down or touch start
-    recordButton.addEventListener('mousedown', function() {
-        isRecording = true;
-        recordButton.classList.add('recording');
-        recordButton.textContent = 'Recording...';
-        completeTranscript = ''; // Reset the complete transcript for a new recording session
-    });
-    recordButton.addEventListener('touchstart', function(e) {
-        isRecording = true;
-        e.preventDefault();
-        recordButton.classList.add('recording');
-        recordButton.textContent = 'Recording...';
-        completeTranscript = ''; // Reset the complete transcript for a new recording session
-    });
-
-    // Event listener for mouse up or touch end
-    recordButton.addEventListener('mouseup', function() {
-        // Delay stopping the recording to capture the end of the speech
-        setTimeout(function() {
-            isRecording = false;
-            recordButton.classList.remove('recording');
-            recordButton.textContent = 'Record';
-            // Automatically send the transcript after the timeout
-            // Call sendMessage only if there is a transcript to send
-            if (completeTranscript.trim() !== '') {
-               sendMessage(completeTranscript.trim());
+    function getSupportedMimeType() {
+        const types = ['audio/webm', 'audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp4'];
+        for (let type of types) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                return type;
             }
-        }, 1000); // Adjust this delay as needed
-        
-    });
-    recordButton.addEventListener('touchend', function() {
-        // Delay stopping the recording to capture the end of the speech
-        setTimeout(function() {
-            isRecording = false;
-            recordButton.classList.remove('recording');
-            recordButton.textContent = 'Record';
-            // Automatically send the transcript after the timeout
-            // Call sendMessage only if there is a transcript to send
-            if (completeTranscript.trim() !== '') {
-                sendMessage(completeTranscript.trim());
-            }
-        }, 1000); // Adjust this delay as needed
-    });
-
-    recognition.onresult = function(event) {
-        var current = event.resultIndex;
-        var transcript = event.results[current][0].transcript;
-
-        if (event.results[current].isFinal) {
-            completeTranscript += transcript + ' '; // Append final transcript
         }
-    };
-
-
-    recognition.onerror = function(event) {
-        console.error("Speech recognition error", event.error);
-    };
-/*
-    function sendMessage(message) {
-        displayMessage(message, 'user');
-        sendForTranslation(message);
-        input.value = ''; // Clear the input field after sending
+        return null;
     }
-*/
 
-    function sendMessage(message) {
-        var finalMessage = message || input.value.trim(); // Use provided message or input field value
+    var supportedMimeType = getSupportedMimeType();
+    console.log("supportedMimeType: ", supportedMimeType);
 
-        if (finalMessage !== '') {
-            displayMessage(finalMessage, 'user');
-            sendForTranslation(finalMessage);
-            input.value = ''; // Clear the input field after sending
+    function startRecording() {
+        console.log("Start Recording")
+        if (persistentStream) {
+            mediaRecorder = new MediaRecorder(persistentStream, { mimeType: supportedMimeType });
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = event => {
+                if (event.data.size > 0) audioChunks.push(event.data);
+                
+            };
+
+            mediaRecorder.onstop = () => {
+                if (mediaRecorder.mimeType !== '') {
+                    preferredMimeType = mediaRecorder.mimeType;
+                } else {
+                    preferredMimeType = supportedMimeType;
+                }
+                console.log("preferredMimeType: ", preferredMimeType);
+                const audioBlob = new Blob(audioChunks, { type: preferredMimeType });
+                const audioUrl = URL.createObjectURL(audioBlob); // Define audioUrl here
+
+                const recordingAudio = new Audio(audioUrl);
+                //console.log('Playing back initial recorded audio');
+                //recordingAudio.play().catch(e => console.error('Error playing audio:', e));
+
+                sendAudioToServer(audioBlob);
+                audioChunks = [];
+            };
+
+            mediaRecorder.start();
+            recordButton.classList.add('recording');
+            recordButton.textContent = 'Recording...';
+        } else {
+            console.error("No media stream available");
+        }
+    }
+
+    function stopRecording() {
+        console.log("stopRecording function hit")
+        if (mediaRecorder) {
+            mediaRecorder.stop();
+            recordButton.classList.remove('recording');
+            recordButton.textContent = 'Record';
+        }
+    }
+
+    recordButton.addEventListener('mousedown', startRecording);
+    recordButton.addEventListener('touchstart', startRecording);
+    recordButton.addEventListener('mouseup', stopRecording);
+    recordButton.addEventListener('touchend', stopRecording);
+
+    async function sendAudioToServer(audioBlob) {
+        console.log('Audio Blob:', audioBlob.size, audioBlob.type);
+        const formData = new FormData();
+        formData.append('audioBlob', audioBlob, preferredMimeType);
+
+        try {
+            const response = await fetch(`${appUrl}/sendAudioToServer`, {
+                method: 'POST',
+                //headers: {
+                    //'Content-Type': 'application/json'
+                    //'Authorization': 'Token 57974d38cf50497baf7a595f22492df13f615d0e'
+                    //'Authorization': 'Token ' + process.env.DEEPGRAM_API_KEY
+                //},
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+            }
+            const data = await response.json();
+            console.log('Transcription: ', data);
+
+            if (data.results && data.results.channels[0].alternatives[0].transcript) {
+                const transcript = data.results.channels[0].alternatives[0].transcript;
+                console.log(transcript);
+                displayMessage(transcript, 'user');
+                sendForTranslation(transcript);
+            } else {
+                console.error('No transcription received');
+            }
+        } catch (error) {
+            console.error('Error sending audio to Deepgram:', error);
         }
     }
 
     sendButton.addEventListener('click', function() {
-        sendMessage();
+        var message = input.value.trim();
+        if (message !== '') {
+            displayMessage(message, 'user');
+            sendForTranslation(message);
+            input.value = '';
+        }
     });
 
     input.addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
             event.preventDefault();
-            sendMessage();
+            var message = input.value.trim();
+            if (message !== '') {
+                displayMessage(message, 'user');
+                sendForTranslation(message);
+                input.value = '';
+            }
         }
     });
 
-    // ... rest of your functions (displayMessage, sendForTranslation, etc.)
+    // ... rest of your functions (displayMessage, sendForTranslation, etc.) ...
 });
 
-/*function displayMessage(message, sender) {
-    var output = document.getElementById('output');
-    var messageDiv = document.createElement('div');
-    messageDiv.classList.add('message');
-    messageDiv.textContent = message;
-    if (sender === 'bot') {
-        messageDiv.style.backgroundColor = '#d1e8ff';
-        if (!window.speechSynthesis) {
-            console.error("Speech Synthesis API is not supported in this browser.");
-            return;
+const rVoiceId = "21m00Tcm4TlvDq8ikWAM";
+
+function speak(text, voiceId, mimeType) {
+    console.log("Sending to /speak:", { text, voiceId, mimeType });
+
+    fetch(`${appUrl}/speak`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text, voiceId, mimeType })
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        } else {
+            throw new Error('Network response was not ok');
+        }
+    })
+    .then(blob => {
+        console.log('Received audio blob for translated text:', blob);
+
+        if (blob.size > 1024) {  // Example size check, adjust as needed
+            const url = window.URL.createObjectURL(blob);
+            const playbackAudio = new Audio(url);
+            console.log('Playing back audio from /speak endpoint');
+            playbackAudio.play().catch(e => console.error('Error playing audio from /speak:', e));
+        } else {
+            console.error('Error: Received audio blob is too small');
         }
 
-        // Automatically read aloud the message
-        var utterance = new SpeechSynthesisUtterance(message);
-        utterance.lang = 'fr-FR'; // Set to the language of the translation
+        //const url = window.URL.createObjectURL(blob);
+        //const playbackAudio = new Audio(url);
+        //console.log('Playing back audio from /speak endpoint');
+        //playbackAudio.play().catch(e => console.error('Error playing audio from /speak:', e));
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Error handling
+    });
+}
 
-        utterance.onerror = function(event) {
-            console.error("Speech Synthesis error:", event.error);
-        };
-
-        window.speechSynthesis.speak(utterance)
-
-        // Add click event listener for reading the message aloud
-        messageDiv.addEventListener('click', function() {
-            var utterance = new SpeechSynthesisUtterance(this.textContent);
-            utterance.lang = 'fr-FR'; // Set to the language of the translation
-            window.speechSynthesis.speak(utterance);
-        });
-    }
-    output.appendChild(messageDiv);
-    output.scrollTop = output.scrollHeight;
-}*/
 
 function displayMessage(message, sender) {
     var output = document.getElementById('output');
@@ -149,35 +197,25 @@ function displayMessage(message, sender) {
     messageDiv.textContent = message;
 
     if (sender === 'bot') {
-        messageDiv.classList.add('bot-message'); // Add 'bot' class for styling
+        messageDiv.classList.add('bot-message');
         messageDiv.style.backgroundColor = '#d1e8ff';
 
-        var readMessageAloud = function(msg) {
-            if (!window.speechSynthesis) {
-                console.error("Speech Synthesis API is not supported in this browser.");
-                return;
-            }
-            var utterance = new SpeechSynthesisUtterance(msg);
-            utterance.lang = 'fr-FR';
-            utterance.onerror = function(event) {
-                console.error("Speech Synthesis error:", event.error);
-            };
-            window.speechSynthesis.speak(utterance);
-        };
+        // Automatically read aloud the message when it's from the bot
+        speak(message, rVoiceId, preferredMimeType);
 
-        // Automatically read aloud the message and set up click event for reading aloud
-        readMessageAloud(message);
+        // Additionally, allow the message to be read aloud when clicked
         messageDiv.addEventListener('click', function() {
-            readMessageAloud(this.textContent);
+            speak(this.textContent, rVoiceId, preferredMimeType);
         });
     }
+
     output.appendChild(messageDiv);
     output.scrollTop = output.scrollHeight;
 }
 
 function sendForTranslation(text) {
-    //var url = new URL('http://127.0.0.1:5000/translate');
-    var url = new URL('https://able-rune-409522.wl.r.appspot.com/translate');
+    var url = new URL(`${appUrl}/chat`);
+    //var url = new URL('https://able-rune-409522.wl.r.appspot.com/translate');
     var params = { text: text };
     url.search = new URLSearchParams(params).toString();
 
@@ -198,7 +236,12 @@ function sendForTranslation(text) {
     })
     .then(data => {
         console.log("Data:", data);
-        displayMessage(data.translatedText, 'bot');
+        if (data.translation) {
+            displayMessage(data.translation, 'bot');
+        } else {
+            console.error('No translation received');
+            displayMessage('No translation received', 'bot');
+        }
     })
     .catch((error) => {
         console.error('Error:', error);

@@ -1,5 +1,5 @@
-runtime: python39  # or the Python version you are using
-entrypoint: gunicorn -b :$PORT --log-level debug backend:app  # Replace 'main' with the name of your Python file containing the Flask app
+runtime: nodejs20
+entrypoint: node server.js
 
 handlers:
 - url: /css
@@ -20,5 +20,5 @@ includes:
 - secrets.yaml
 
 env_variables:
-  FLASK_DEBUG: 'True'
-  # Environment variables (if any), like API keys
+  APP_URL: "https://able-rune-409522.wl.r.appspot.com"
+
