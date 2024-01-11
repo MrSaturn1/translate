@@ -89,6 +89,46 @@ app.post('/sendAudioToServer', upload.single('audioBlob'), async (req, res) => {
 
 app.get("/chat", async (req, res) => {
     const text = req.query.text;
+    const language = req.query.language;
+
+    const languagePrompts = {
+        "en-US": "You are an assistant fluent in English. Translate the following text into American English.",
+        "en-GB": "You are an assistant fluent in English. Translate the following text into British English.",
+        "en-AU": "You are an assistant fluent in English. Translate the following text into Australian English.",
+        "en-CA": "You are an assistant fluent in English. Translate the following text into Canadian English.",
+        "ja-JP": "You are a bilingual assistant fluent in both English and Japanese. Translate the following English text into Japanese.",
+        "zh-CN": "You are a bilingual assistant fluent in both English and Chinese. Translate the following English text into Chinese.",
+        "de-DE": "You are a bilingual assistant fluent in both English and German. Translate the following English text into German.",
+        "hi-IN": "You are a bilingual assistant fluent in both English and Hindi. Translate the following English text into Hindi.",
+        "fr-FR": "You are a bilingual assistant fluent in both English and French. Translate the following English text into French.",
+        "fr-CA": "You are a bilingual assistant fluent in both English and French. Translate the following English text into Canadian French.",
+        "ko-KR": "You are a bilingual assistant fluent in both English and Korean. Translate the following English text into Korean.",
+        "pt-BR": "You are a bilingual assistant fluent in both English and Portuguese. Translate the following English text into Brazilian Portuguese.",
+        "pt-PT": "You are a bilingual assistant fluent in both English and Portuguese. Translate the following English text into European Portuguese.",
+        "it-IT": "You are a bilingual assistant fluent in both English and Italian. Translate the following English text into Italian.",
+        "es-ES": "You are a bilingual assistant fluent in both English and Spanish. Translate the following English text into European Spanish.",
+        "es-MX": "You are a bilingual assistant fluent in both English and Spanish. Translate the following English text into Mexican Spanish.",
+        "id-ID": "You are a bilingual assistant fluent in both English and Indonesian. Translate the following English text into Indonesian.",
+        "nl-NL": "You are a bilingual assistant fluent in both English and Dutch. Translate the following English text into Dutch.",
+        "tr-TR": "You are a bilingual assistant fluent in both English and Turkish. Translate the following English text into Turkish.",
+        "fil-PH": "You are a bilingual assistant fluent in both English and Filipino. Translate the following English text into Filipino.",
+        "pl-PL": "You are a bilingual assistant fluent in both English and Polish. Translate the following English text into Polish.",
+        "sv-SE": "You are a bilingual assistant fluent in both English and Swedish. Translate the following English text into Swedish.",
+        "bg-BG": "You are a bilingual assistant fluent in both English and Bulgarian. Translate the following English text into Bulgarian.",
+        "ro-RO": "You are a bilingual assistant fluent in both English and Romanian. Translate the following English text into Romanian.",
+        "ar-SA": "You are a bilingual assistant fluent in both English and Arabic. Translate the following English text into Saudi Arabian Arabic.",
+        "ar-AE": "You are a bilingual assistant fluent in both English and Arabic. Translate the following English text into UAE Arabic.",
+        "cs-CZ": "You are a bilingual assistant fluent in both English and Czech. Translate the following English text into Czech.",
+        "el-GR": "You are a bilingual assistant fluent in both English and Greek. Translate the following English text into Greek.",
+        "fi-FI": "You are a bilingual assistant fluent in both English and Finnish. Translate the following English text into Finnish.",
+        "hr-HR": "You are a bilingual assistant fluent in both English and Croatian. Translate the following English text into Croatian.",
+        "ms-MY": "You are a bilingual assistant fluent in both English and Malay. Translate the following English text into Malay.",
+        "sk-SK": "You are a bilingual assistant fluent in both English and Slovak. Translate the following English text into Slovak.",
+        "da-DK": "You are a bilingual assistant fluent in both English and Danish. Translate the following English text into Danish.",
+        "ta-IN": "You are a bilingual assistant fluent in both English and Tamil. Translate the following English text into Tamil.",
+        "uk-UA": "You are a bilingual assistant fluent in both English and Ukrainian. Translate the following English text into Ukrainian."
+    };
+
 
     // Ensure the OpenAI API key is set
     if (!process.env.OPENAI_API_KEY) {
@@ -100,10 +140,13 @@ app.get("/chat", async (req, res) => {
     });
 
     try {
+        // Determine the system message based on the selected language
+        const systemMessage = languagePrompts[language] || "You are a bilingual assistant. Translate the following English text."; // Default prompt
+
         const response = await openaiClient.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [
-                { role: "system", content: "You are a bilingual assistant fluent in both English and French. Translate the following English text into French." },
+                { role: "system", content: systemMessage },
                 { role: "user", content: text }
             ],
             max_tokens: 60

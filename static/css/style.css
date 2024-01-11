@@ -15,13 +15,28 @@
     border: 1px solid #ccc;
 }
 
+.input-container {
+    display: flex; /* Enables flexbox layout */
+    align-items: center; /* Vertically aligns items in the container */
+}
+
 #chat-input {
-    width: calc(100% - 60px);
+    flex-grow: 1;
+    margin-right: 3px;
     padding: 5px;
 }
 
 #send-btn {
     width: 50px;
+}
+
+.record-container {
+    text-align: center; /* Centers its children horizontally */
+    display: flex;      /* Use flexbox */
+    flex-direction: column; /* Stack children vertically */
+    align-items: center; /* Center children horizontally */
+    justify-content: center; /* Center children vertically */
+    height: 100px; /* Adjust as needed */
 }
 
 .record-btn {
@@ -33,6 +48,11 @@
     border: none;
     outline: none;
     cursor: pointer;
+    margin-bottom: 6px;
+}
+
+.record-label {
+    font-family: gill sans, sans-serif; /* Example using Arial, a common sans-serif font */
 }
 
 .record-btn.recording {
